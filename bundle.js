@@ -10,12 +10,9 @@ var game = new Game(canvas, update, render);
 var image = new Image();
 image.src = 'assets/pipes.png';
 
-// TODO: Place the pipe tiles on the board in random order
-
 canvas.onclick = function(event) {
   event.preventDefault();
-  // TODO: determine which pipe tile was clicked on
-  // TODO: rotate the pipes in the pipe tile
+  // TODO: Place or rotate pipe tile
 }
 
 /**
