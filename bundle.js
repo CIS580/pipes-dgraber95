@@ -3,16 +3,69 @@
 
 /* Classes */
 const Game = require('./game');
+const Pipe = require('./pipe.js');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
 var game = new Game(canvas, update, render);
-var image = new Image();
-image.src = 'assets/pipes.png';
+var cur_pipe_image = new Image();
+var background = new Image();
+background.src = 'assets/pipes_background.jpg';
+var currentPipe = Math.floor(Math.random()*6);
+updatePipeImgSource();
+var cursor_x = -80;
+var cursor_y = -80;
+var water_cell = [-1, -1];
+var cells = new Array(10);
+for (var i = 0; i < 10; i++) {
+  cells[i] = new Array(10);
+}
 
-canvas.onclick = function(event) {
+
+window.onmousedown = function(event) {
+  var button = event.button;
   event.preventDefault();
+  var x_cell = Math.floor((event.clientX - 8)/86);
+  var y_cell = Math.floor((event.clientY - 79)/86);
+
+  if(x_cell < 10 && x_cell >= 0 && y_cell < 10 && y_cell >= 0){  
+    switch(button){
+      // Left click
+      case 0:
+        if(!cells[x_cell][y_cell]){
+          cells[x_cell][y_cell] = new Pipe(x_cell, y_cell, currentPipe);
+          currentPipe = Math.floor(Math.random()*6);
+          updatePipeImgSource();
+        }
+        break;
+
+      // Right click
+      case 2:
+        if(cells[x_cell][y_cell]){
+          cells[x_cell][y_cell].rotate();
+        }
+        else{
+          if(currentPipe == 3){
+            currentPipe = 0;
+          }
+          else if(currentPipe == 5) { 
+            currentPipe = 4;
+          }
+          else {
+            currentPipe ++;
+          }
+          cur_pipe_image.src = 'assets/pipes/pipe_' + currentPipe + '/pipe_' + currentPipe + '.png';
+        }
+        break;
+    }
+  }
+  
   // TODO: Place or rotate pipe tile
+}
+
+canvas.onmousemove = function(event) {
+  cursor_x = event.clientX - 8;
+  cursor_y = event.clientY - 79;
 }
 
 /**
@@ -48,14 +101,37 @@ function update(elapsedTime) {
   * @param {CanvasRenderingContext2D} ctx the context to render to
   */
 function render(elapsedTime, ctx) {
-  ctx.fillStyle = "#777777";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(background, 0, 0, 860, 860, 0, 0, canvas.width, canvas.height);
 
-  // TODO: Render the board
 
+
+  for(var i = 0; i < 10; i ++)
+  {
+    for(var j = 0; j < 10; j++)
+    {
+      if(cells[i][j]){
+        cells[i][j].render(ctx);
+      }
+    }
+  }
+
+
+  ctx.globalAlpha = 0.4;
+  ctx.drawImage(
+    //image
+    cur_pipe_image,
+    //source rectangle
+    0, 0, 128, 128,
+    //destination rectangle
+    cursor_x - 52, cursor_y - 41, 86, 86
+  );
+  ctx.globalAlpha = 1.0;
 }
 
-},{"./game":2}],2:[function(require,module,exports){
+function updatePipeImgSource(){
+  cur_pipe_image.src = 'assets/pipes/pipe_' + currentPipe + '/pipe_' + currentPipe + '.png';
+}
+},{"./game":2,"./pipe.js":3}],2:[function(require,module,exports){
 "use strict";
 
 /**
@@ -113,4 +189,69 @@ Game.prototype.loop = function(newTime) {
   this.frontCtx.drawImage(this.backBuffer, 0, 0);
 }
 
+},{}],3:[function(require,module,exports){
+/**
+ * @module exports the pipe class
+ */
+module.exports = exports = Pipe;
+
+
+/**
+ * @constructor Pipe
+ * Creates a new pipe object
+ * @param {int} lane - pipe lane number the pipe belongs in (0 - 3, left to right)
+ */
+function Pipe(x_cell, y_cell, pipenum) {
+  this.spritesheet  = new Image();
+  this.pipenum = pipenum;
+  this.spritesheet.src = 'assets/pipes/pipe_' + this.pipenum + '/pipe_' + this.pipenum + '.png';
+  this.x_cell = x_cell;
+  this.y_cell = y_cell;
+  this.width  = 86;
+  this.height = 86;
+  this.waterlevel = 0;
+  this.count = 0;
+}
+
+/**
+ * @function updates the pipe object
+ */
+Pipe.prototype.update = function(elapsedTime, speed) {
+    this.count += elapsedTime;
+    if(count > 300){
+        waterlevel += 1;
+        this.count = 0;
+    }
+}
+
+/**
+ * @function renders the pipe into the provided context
+ * {CanvasRenderingContext2D} ctx - the context to render into
+ */
+Pipe.prototype.render = function(ctx) {
+  ctx.drawImage(
+    //image
+    this.spritesheet,
+    //source rectangle
+    0, 0, 128, 128,
+    //destination rectangle
+    this.x_cell * 86, this.y_cell * 86, this.width, this.height
+  );
+}
+
+/**
+ * @function rotates the pipe object
+ */
+Pipe.prototype.rotate = function() {
+    if(this.pipenum == 3){
+    this.pipenum = 0;
+    }
+    else if(this.pipenum == 5) { 
+    this.pipenum = 4;
+    }
+    else {
+    this.pipenum ++;
+    }
+    this.spritesheet.src = 'assets/pipes/pipe_' + this.pipenum + '/pipe_' + this.pipenum + '.png';
+}
 },{}]},{},[1]);
