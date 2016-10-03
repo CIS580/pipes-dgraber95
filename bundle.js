@@ -16,6 +16,7 @@ updatePipeImgSource();
 var cursor_x = -80;
 var cursor_y = -80;
 var water_cell = [-1, -1];
+var next_cell = [-1, -1];
 var cells = new Array(10);
 for (var i = 0; i < 10; i++) {
   cells[i] = new Array(10);
@@ -29,10 +30,11 @@ window.onmousedown = function(event) {
   var y_cell = Math.floor((event.clientY - 79)/86);
 
   if(x_cell < 10 && x_cell >= 0 && y_cell < 10 && y_cell >= 0){  
+    var thisPipe = cells[x_cell][y_cell];
     switch(button){
       // Left click
       case 0:
-        if(!cells[x_cell][y_cell]){
+        if(!thisPipe){
           cells[x_cell][y_cell] = new Pipe(x_cell, y_cell, currentPipe);
           currentPipe = Math.floor(Math.random()*6);
           updatePipeImgSource();
@@ -41,8 +43,8 @@ window.onmousedown = function(event) {
 
       // Right click
       case 2:
-        if(cells[x_cell][y_cell]){
-          cells[x_cell][y_cell].rotate();
+        if(thisPipe){
+          thisPipe.rotate();
         }
         else{
           if(currentPipe == 3){
@@ -63,7 +65,7 @@ window.onmousedown = function(event) {
   // TODO: Place or rotate pipe tile
 }
 
-canvas.onmousemove = function(event) {
+window.onmousemove = function(event) {
   cursor_x = event.clientX - 8;
   cursor_y = event.clientY - 79;
 }
@@ -89,8 +91,15 @@ masterLoop(performance.now());
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
-
-  // TODO: Advance the fluid
+  for(var i = 0; i < 10; i ++)
+  {
+    for(var j = 0; j < 10; j++)
+    {
+      if(cells[i][j]){
+        cells[i][j].update(elapsedTime);
+      }
+    }
+  }
 }
 
 /**
@@ -195,6 +204,10 @@ Game.prototype.loop = function(newTime) {
  */
 module.exports = exports = Pipe;
 
+var BOTTOM = 0;
+var RIGHT = 1;
+var TOP = 2;
+var LEFT = 3;
 
 /**
  * @constructor Pipe
@@ -202,26 +215,34 @@ module.exports = exports = Pipe;
  * @param {int} lane - pipe lane number the pipe belongs in (0 - 3, left to right)
  */
 function Pipe(x_cell, y_cell, pipenum) {
-  this.spritesheet  = new Image();
   this.pipenum = pipenum;
+  this.spritesheet  = new Image();
   this.spritesheet.src = 'assets/pipes/pipe_' + this.pipenum + '/pipe_' + this.pipenum + '.png';
+  this.waterImg = new Image();
+  this.waterImg.src = '';
   this.x_cell = x_cell;
   this.y_cell = y_cell;
   this.width  = 86;
   this.height = 86;
-  this.waterlevel = 0;
+  this.waterlevel = -1;
   this.count = 0;
+
+  /* bottom, right, top, left */
+  this.entries = [false, false, false, false];
+  this.updateEntries();
 }
 
 /**
  * @function updates the pipe object
  */
-Pipe.prototype.update = function(elapsedTime, speed) {
+Pipe.prototype.update = function(elapsedTime) {
+  if(this.waterlevel >= 0 && this.waterlevel < 10){
     this.count += elapsedTime;
-    if(count > 300){
-        waterlevel += 1;
+    if(this.count > 300){
+        this.waterlevel += 1;
         this.count = 0;
     }
+  }
 }
 
 /**
@@ -229,6 +250,17 @@ Pipe.prototype.update = function(elapsedTime, speed) {
  * {CanvasRenderingContext2D} ctx - the context to render into
  */
 Pipe.prototype.render = function(ctx) {
+  if(this.waterlevel > 0){
+    ctx.drawImage(
+      //image
+      this.waterImg,
+      //source rectangle
+      128*this.waterlevel, 0, 128, 128,
+      //destination rectangle
+      this.x_cell * 86, this.y_cell * 86, this.width, this.height
+    );
+  }
+
   ctx.drawImage(
     //image
     this.spritesheet,
@@ -237,7 +269,86 @@ Pipe.prototype.render = function(ctx) {
     //destination rectangle
     this.x_cell * 86, this.y_cell * 86, this.width, this.height
   );
+
 }
+
+
+/**
+ * @function begins liquid flow in pipe
+ * {int} waterDirection - direction water is flowing in
+ * return: direction water will flow out
+ */
+Pipe.prototype.beginFlow = function(waterDirection) {
+    this.waterlevel = 0;
+    switch(this.pipenum){
+      case 0:
+        if(waterDirection == LEFT){
+          this.waterImg.src = 'assets/pipes/pipe_0/water_0_0.png';
+          return TOP;
+        }
+        else if(waterDirection == TOP){
+          this.waterImg.src = 'assets/pipes/pipe_0/water_0_1.png';
+          return LEFT;
+        }
+        break;
+
+      case 1:
+        if(waterDirection == RIGHT){
+          this.waterImg.src = 'assets/pipes/pipe_1/water_1_0.png';
+          return TOP;
+        }
+        else if(waterDirection == TOP){
+          this.waterImg.src = 'assets/pipes/pipe_1/water_1_1.png';
+          return RIGHT;          
+        }
+        break;        
+
+      case 2:
+        if(waterDirection == BOTTOM){
+          this.waterImg.src = 'assets/pipes/pipe_2/water_2_0.png';
+          return RIGHT;
+        }
+        else if(waterDirection == RIGHT){
+          this.waterImg.src = 'assets/pipes/pipe_2/water_2_1.png';
+          return BOTTOM;          
+        }
+        break;
+
+      case 3:
+        if(waterDirection == BOTTOM){
+          this.waterImg.src = 'assets/pipes/pipe_3/water_3_0.png';
+          return LEFT;
+        }
+        else if(waterDirection == LEFT){
+          this.waterImg.src = 'assets/pipes/pipe_3/water_3_1.png';
+          return BOTTOM;          
+        }
+        break;
+
+      case 4:
+        if(waterDirection == BOTTOM){
+          this.waterImg.src = 'assets/pipes/pipe_4/water_4_0.png';
+          return TOP;
+        }
+        else if(waterDirection == TOP){
+          this.waterImg.src = 'assets/pipes/pipe_4/water_4_1.png';
+          return BOTTOM;          
+        }
+        break;  
+
+      case 5:
+        if(waterDirection == LEFT){
+          this.waterImg.src = 'assets/pipes/pipe_5/water_5_0.png';
+          return RIGHT;
+        }
+        else if(waterDirection == RIGHT){
+          this.waterImg.src = 'assets/pipes/pipe_5/water_5_1.png';
+          return LEFT;
+        }
+        break;
+    }
+}
+
 
 /**
  * @function rotates the pipe object
@@ -253,5 +364,32 @@ Pipe.prototype.rotate = function() {
     this.pipenum ++;
     }
     this.spritesheet.src = 'assets/pipes/pipe_' + this.pipenum + '/pipe_' + this.pipenum + '.png';
+    this.updateEntries();
+}
+
+/**
+ * @function updates the pipe entry ways
+ */
+Pipe.prototype.updateEntries = function() {
+    switch(this.pipenum){
+      case 0:
+        this.entries = [false, false, true, true];
+        break;
+      case 1:
+        this.entries = [false, true, true, false];
+        break;
+      case 2:
+        this.entries = [true, true, false, false];
+        break;
+      case 3:
+        this.entries = [true, false, false, true];
+        break;
+      case 4:
+        this.entries = [true, false, true, false];
+        break;
+      case 5:
+        this.entries = [false, true, false, true];
+        break;                                        
+    }
 }
 },{}]},{},[1]);

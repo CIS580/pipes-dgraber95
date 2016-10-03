@@ -15,6 +15,7 @@ updatePipeImgSource();
 var cursor_x = -80;
 var cursor_y = -80;
 var water_cell = [-1, -1];
+var next_cell = [-1, -1];
 var cells = new Array(10);
 for (var i = 0; i < 10; i++) {
   cells[i] = new Array(10);
@@ -28,10 +29,11 @@ window.onmousedown = function(event) {
   var y_cell = Math.floor((event.clientY - 79)/86);
 
   if(x_cell < 10 && x_cell >= 0 && y_cell < 10 && y_cell >= 0){  
+    var thisPipe = cells[x_cell][y_cell];
     switch(button){
       // Left click
       case 0:
-        if(!cells[x_cell][y_cell]){
+        if(!thisPipe){
           cells[x_cell][y_cell] = new Pipe(x_cell, y_cell, currentPipe);
           currentPipe = Math.floor(Math.random()*6);
           updatePipeImgSource();
@@ -40,8 +42,8 @@ window.onmousedown = function(event) {
 
       // Right click
       case 2:
-        if(cells[x_cell][y_cell]){
-          cells[x_cell][y_cell].rotate();
+        if(thisPipe){
+          thisPipe.rotate();
         }
         else{
           if(currentPipe == 3){
@@ -62,7 +64,7 @@ window.onmousedown = function(event) {
   // TODO: Place or rotate pipe tile
 }
 
-canvas.onmousemove = function(event) {
+window.onmousemove = function(event) {
   cursor_x = event.clientX - 8;
   cursor_y = event.clientY - 79;
 }
@@ -88,8 +90,15 @@ masterLoop(performance.now());
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
-
-  // TODO: Advance the fluid
+  for(var i = 0; i < 10; i ++)
+  {
+    for(var j = 0; j < 10; j++)
+    {
+      if(cells[i][j]){
+        cells[i][j].update(elapsedTime);
+      }
+    }
+  }
 }
 
 /**
