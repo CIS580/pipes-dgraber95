@@ -3,10 +3,10 @@
  */
 module.exports = exports = Pipe;
 
-var BOTTOM = 0;
-var RIGHT = 1;
-var TOP = 2;
-var LEFT = 3;
+const BOTTOM = 0;
+const RIGHT = 1;
+const TOP = 2;
+const LEFT = 3;
 
 /**
  * @constructor Pipe

@@ -3,11 +3,6 @@
  */
 module.exports = exports = StartPipe;
 
-var BOTTOM = 0;
-var RIGHT = 1;
-var TOP = 2;
-var LEFT = 3;
-
 /**
  * @constructor StartPipe
  * Creates a new StartPipe object
