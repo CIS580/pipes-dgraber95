@@ -4,10 +4,14 @@
 /* Classes */
 const Game = require('./game');
 const Pipe = require('./pipe.js');
+const StartPipe = require('./start_pipe.js');
+const EndPipe = require('./end_pipe.js');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
 var game = new Game(canvas, update, render);
+var startPipe = new StartPipe();
+var endPipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);
 var cur_pipe_image = new Image();
 var background = new Image();
 background.src = 'assets/pipes_background.jpg';
@@ -15,12 +19,19 @@ var currentPipe = Math.floor(Math.random()*6);
 updatePipeImgSource();
 var cursor_x = -80;
 var cursor_y = -80;
-var water_cell = [-1, -1];
+var water_cell = startPipe;
+var direction = -1;
 var next_cell = [-1, -1];
 var cells = new Array(10);
+var pipes_used = 0;
+var count = 300;
+var level = 1;
+
 for (var i = 0; i < 10; i++) {
   cells[i] = new Array(10);
 }
+cells[startPipe.x_cell][startPipe.y_cell] = startPipe;
+cells[endPipe.x_cell][endPipe.y_cell] = endPipe;
 
 
 window.onmousedown = function(event) {
@@ -43,7 +54,7 @@ window.onmousedown = function(event) {
 
       // Right click
       case 2:
-        if(thisPipe){
+        if(thisPipe && thisPipe.rotatable){
           thisPipe.rotate();
         }
         else{
@@ -70,6 +81,25 @@ window.onmousemove = function(event) {
   cursor_y = event.clientY - 79;
 }
 
+
+
+window.onkeydown = function(event) {
+  switch(event.keyCode) {
+    case 32:
+      count = 10;
+      break;
+  }
+}
+
+window.onkeyup = function(event) {
+  switch(event.keyCode) {
+    case 32:
+      count = 300;
+      break;
+  }
+}
+
+
 /**
  * @function masterLoop
  * Advances the game in sync with the refresh rate of the screen
@@ -79,6 +109,8 @@ var masterLoop = function(timestamp) {
   game.loop(timestamp);
   window.requestAnimationFrame(masterLoop);
 }
+direction = startPipe.beginFlow();
+updateNextCell()
 masterLoop(performance.now());
 
 
@@ -91,15 +123,52 @@ masterLoop(performance.now());
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
+    var oppDirection;
+    switch(direction){
+      case 0:
+      case 1:
+        oppDirection = direction + 2;
+        break;
+      case 2:
+      case 3:
+        oppDirection = direction - 2;
+        break;
+    }
+
+  finish:
+  if(water_cell.waterlevel == 10)
+  {
+    water_cell = cells[next_cell[0]][next_cell[1]];
+
+    // Game over
+    if(!water_cell || !water_cell.entries[oppDirection]){
+      game.pause(true);
+      break finish;
+    }
+
+    pipes_used += 1;
+
+    // New game
+    if(water_cell.endpipe){
+      new_level();
+      break finish;
+    }
+
+    direction = water_cell.beginFlow(oppDirection);    
+    updateNextCell();
+  }
+
   for(var i = 0; i < 10; i ++)
   {
     for(var j = 0; j < 10; j++)
     {
       if(cells[i][j]){
-        cells[i][j].update(elapsedTime);
+        cells[i][j].update(elapsedTime, count);
       }
     }
   }
+
+
 }
 
 /**
@@ -140,7 +209,92 @@ function render(elapsedTime, ctx) {
 function updatePipeImgSource(){
   cur_pipe_image.src = 'assets/pipes/pipe_' + currentPipe + '/pipe_' + currentPipe + '.png';
 }
-},{"./game":2,"./pipe.js":3}],2:[function(require,module,exports){
+
+
+function updateNextCell(){
+  switch(direction){
+    // Down
+    case 0:
+      next_cell = [water_cell.x_cell, water_cell.y_cell + 1];
+      break;
+    // Right
+    case 1:
+      next_cell = [water_cell.x_cell + 1, water_cell.y_cell];
+      break;
+    // Up
+    case 2:
+      next_cell = [water_cell.x_cell, water_cell.y_cell - 1];
+      break;
+    // Left
+    case 3:
+      next_cell = [water_cell.x_cell - 1, water_cell.y_cell];
+      break;
+  }
+}
+
+
+function new_level(){
+  startPipe = new StartPipe();
+  endpipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);
+  cells = new Array(10);
+  for (var i = 0; i < 10; i++) {
+    cells[i] = new Array(10);
+  }
+  cells[startPipe.x_cell][startPipe.y_cell] = startPipe;
+  cells[endPipe.x_cell][endPipe.y_cell] = endPipe; 
+}
+},{"./end_pipe.js":2,"./game":3,"./pipe.js":4,"./start_pipe.js":5}],2:[function(require,module,exports){
+/**
+ * @module exports the end pipe class
+ */
+module.exports = exports = EndPipe;
+
+/**
+ * @constructor EndPipe
+ * Creates a new EndPipe object
+ * {int} start_x - x cell of start pipe (cannot overlap)
+ * {int} start_y - y cell of start pipe (cannot overlap)
+ */
+function EndPipe(start_x, start_y) {
+  this.direction = Math.floor(Math.random() * 4);
+  this.spritesheet  = new Image();
+  this.spritesheet.src = 'assets/pipes/pipe_end/pipe_end_' + this.direction + '.png';
+  do{
+    this.x_cell = Math.floor(Math.random() * 8) + 1;
+    this.y_cell = Math.floor(Math.random() * 8) + 1;
+  }
+  /* ensure no overlap */
+  while(Math.abs(this.x_cell - start_x) < 2 || Math.abs(this.y_cell - start_y) < 2)
+  this.width  = 86;
+  this.height = 86;
+  this.entries = [false, false, false, false];
+  this.entries[this.direction] = true;
+  this.rotatable = false;
+  this.endpipe = true;
+}
+
+/**
+ * @function updates the end pipe object
+ */
+EndPipe.prototype.update = function(elapsedTime) {
+    // end pipe will not need to update
+}
+
+/**
+ * @function renders the pipe into the provided context
+ * {CanvasRenderingContext2D} ctx - the context to render into
+ */
+EndPipe.prototype.render = function(ctx) {
+    ctx.drawImage(
+        //image
+        this.spritesheet,
+        //source rectangle
+        0, 0, 128, 128,
+        //destination rectangle
+        this.x_cell * 86, this.y_cell * 86, this.width, this.height
+    );
+}
+},{}],3:[function(require,module,exports){
 "use strict";
 
 /**
@@ -198,7 +352,7 @@ Game.prototype.loop = function(newTime) {
   this.frontCtx.drawImage(this.backBuffer, 0, 0);
 }
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 /**
  * @module exports the pipe class
  */
@@ -212,7 +366,9 @@ var LEFT = 3;
 /**
  * @constructor Pipe
  * Creates a new pipe object
- * @param {int} lane - pipe lane number the pipe belongs in (0 - 3, left to right)
+ * @param {int} x_cell - x cell the pipe is in 
+ * @param {int} y_cell - y cell the pipe is in 
+ * @param {int} pipenum - number of the pipe (0 through 5, see assets for images)
  */
 function Pipe(x_cell, y_cell, pipenum) {
   this.pipenum = pipenum;
@@ -226,6 +382,7 @@ function Pipe(x_cell, y_cell, pipenum) {
   this.height = 86;
   this.waterlevel = -1;
   this.count = 0;
+  this.rotatable = true;
 
   /* bottom, right, top, left */
   this.entries = [false, false, false, false];
@@ -235,10 +392,10 @@ function Pipe(x_cell, y_cell, pipenum) {
 /**
  * @function updates the pipe object
  */
-Pipe.prototype.update = function(elapsedTime) {
+Pipe.prototype.update = function(elapsedTime, count) {
   if(this.waterlevel >= 0 && this.waterlevel < 10){
     this.count += elapsedTime;
-    if(this.count > 300){
+    if(this.count > count){
         this.waterlevel += 1;
         this.count = 0;
     }
@@ -280,6 +437,7 @@ Pipe.prototype.render = function(ctx) {
  */
 Pipe.prototype.beginFlow = function(waterDirection) {
     this.waterlevel = 0;
+    this.rotatable = false;
     switch(this.pipenum){
       case 0:
         if(waterDirection == LEFT){
@@ -391,5 +549,85 @@ Pipe.prototype.updateEntries = function() {
         this.entries = [false, true, false, true];
         break;                                        
     }
+}
+},{}],5:[function(require,module,exports){
+/**
+ * @module exports the start pipe class
+ */
+module.exports = exports = StartPipe;
+
+var BOTTOM = 0;
+var RIGHT = 1;
+var TOP = 2;
+var LEFT = 3;
+
+/**
+ * @constructor StartPipe
+ * Creates a new StartPipe object
+ */
+function StartPipe() {
+  this.direction = Math.floor(Math.random() * 4);
+  this.spritesheet  = new Image();
+  this.spritesheet.src = 'assets/pipes/pipe_start/pipe_start_' + this.direction + '.png';
+  this.x_cell = Math.floor(Math.random() * 8) + 1;
+  this.y_cell = Math.floor(Math.random() * 8) + 1;
+  this.width  = 86;
+  this.height = 86;
+  this.waterlevel = -1;
+  this.count = 0;
+  this.entries = [false, false, false, false];
+  this.rotatable = false;
+
+}
+
+/**
+ * @function updates the start pipe object
+ */
+StartPipe.prototype.update = function(elapsedTime) {
+  if(this.waterlevel >= 0 && this.waterlevel < 10){
+    this.count += elapsedTime;
+    if(this.count > 300){
+        this.waterlevel += 1;
+        this.count = 0;
+    }
+  }
+}
+
+/**
+ * @function renders the pipe into the provided context
+ * {CanvasRenderingContext2D} ctx - the context to render into
+ */
+StartPipe.prototype.render = function(ctx) {
+  if(this.waterlevel > 0){
+    ctx.drawImage(
+      //image
+      this.spritesheet,
+      //source rectangle
+      128*this.waterlevel, 0, 128, 128,
+      //destination rectangle
+      this.x_cell * 86, this.y_cell * 86, this.width, this.height
+    );
+  }
+  else{
+    ctx.drawImage(
+      //image
+      this.spritesheet,
+      //source rectangle
+      0, 0, 128, 128,
+      //destination rectangle
+      this.x_cell * 86, this.y_cell * 86, this.width, this.height
+    );
+  }
+
+}
+
+
+/**
+ * @function begins liquid flow in start pipe
+ * return: direction water will flow out
+ */
+StartPipe.prototype.beginFlow = function() {
+    this.waterlevel = 0;
+    return this.direction;
 }
 },{}]},{},[1]);

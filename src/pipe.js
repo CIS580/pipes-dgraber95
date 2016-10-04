@@ -11,7 +11,9 @@ var LEFT = 3;
 /**
  * @constructor Pipe
  * Creates a new pipe object
- * @param {int} lane - pipe lane number the pipe belongs in (0 - 3, left to right)
+ * @param {int} x_cell - x cell the pipe is in 
+ * @param {int} y_cell - y cell the pipe is in 
+ * @param {int} pipenum - number of the pipe (0 through 5, see assets for images)
  */
 function Pipe(x_cell, y_cell, pipenum) {
   this.pipenum = pipenum;
@@ -25,6 +27,7 @@ function Pipe(x_cell, y_cell, pipenum) {
   this.height = 86;
   this.waterlevel = -1;
   this.count = 0;
+  this.rotatable = true;
 
   /* bottom, right, top, left */
   this.entries = [false, false, false, false];
@@ -34,10 +37,10 @@ function Pipe(x_cell, y_cell, pipenum) {
 /**
  * @function updates the pipe object
  */
-Pipe.prototype.update = function(elapsedTime) {
+Pipe.prototype.update = function(elapsedTime, count) {
   if(this.waterlevel >= 0 && this.waterlevel < 10){
     this.count += elapsedTime;
-    if(this.count > 300){
+    if(this.count > count){
         this.waterlevel += 1;
         this.count = 0;
     }
@@ -79,6 +82,7 @@ Pipe.prototype.render = function(ctx) {
  */
 Pipe.prototype.beginFlow = function(waterDirection) {
     this.waterlevel = 0;
+    this.rotatable = false;
     switch(this.pipenum){
       case 0:
         if(waterDirection == LEFT){

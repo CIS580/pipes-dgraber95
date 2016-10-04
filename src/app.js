@@ -3,10 +3,14 @@
 /* Classes */
 const Game = require('./game');
 const Pipe = require('./pipe.js');
+const StartPipe = require('./start_pipe.js');
+const EndPipe = require('./end_pipe.js');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
 var game = new Game(canvas, update, render);
+var startPipe = new StartPipe();
+var endPipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);
 var cur_pipe_image = new Image();
 var background = new Image();
 background.src = 'assets/pipes_background.jpg';
@@ -14,12 +18,19 @@ var currentPipe = Math.floor(Math.random()*6);
 updatePipeImgSource();
 var cursor_x = -80;
 var cursor_y = -80;
-var water_cell = [-1, -1];
+var water_cell = startPipe;
+var direction = -1;
 var next_cell = [-1, -1];
 var cells = new Array(10);
+var pipes_used = 0;
+var count = 300;
+var level = 1;
+
 for (var i = 0; i < 10; i++) {
   cells[i] = new Array(10);
 }
+cells[startPipe.x_cell][startPipe.y_cell] = startPipe;
+cells[endPipe.x_cell][endPipe.y_cell] = endPipe;
 
 
 window.onmousedown = function(event) {
@@ -42,7 +53,7 @@ window.onmousedown = function(event) {
 
       // Right click
       case 2:
-        if(thisPipe){
+        if(thisPipe && thisPipe.rotatable){
           thisPipe.rotate();
         }
         else{
@@ -69,6 +80,25 @@ window.onmousemove = function(event) {
   cursor_y = event.clientY - 79;
 }
 
+
+
+window.onkeydown = function(event) {
+  switch(event.keyCode) {
+    case 32:
+      count = 10;
+      break;
+  }
+}
+
+window.onkeyup = function(event) {
+  switch(event.keyCode) {
+    case 32:
+      count = 300;
+      break;
+  }
+}
+
+
 /**
  * @function masterLoop
  * Advances the game in sync with the refresh rate of the screen
@@ -78,6 +108,8 @@ var masterLoop = function(timestamp) {
   game.loop(timestamp);
   window.requestAnimationFrame(masterLoop);
 }
+direction = startPipe.beginFlow();
+updateNextCell()
 masterLoop(performance.now());
 
 
@@ -90,15 +122,52 @@ masterLoop(performance.now());
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
+    var oppDirection;
+    switch(direction){
+      case 0:
+      case 1:
+        oppDirection = direction + 2;
+        break;
+      case 2:
+      case 3:
+        oppDirection = direction - 2;
+        break;
+    }
+
+  finish:
+  if(water_cell.waterlevel == 10)
+  {
+    water_cell = cells[next_cell[0]][next_cell[1]];
+
+    // Game over
+    if(!water_cell || !water_cell.entries[oppDirection]){
+      game.pause(true);
+      break finish;
+    }
+
+    pipes_used += 1;
+
+    // New game
+    if(water_cell.endpipe){
+      new_level();
+      break finish;
+    }
+
+    direction = water_cell.beginFlow(oppDirection);    
+    updateNextCell();
+  }
+
   for(var i = 0; i < 10; i ++)
   {
     for(var j = 0; j < 10; j++)
     {
       if(cells[i][j]){
-        cells[i][j].update(elapsedTime);
+        cells[i][j].update(elapsedTime, count);
       }
     }
   }
+
+
 }
 
 /**
@@ -138,4 +207,38 @@ function render(elapsedTime, ctx) {
 
 function updatePipeImgSource(){
   cur_pipe_image.src = 'assets/pipes/pipe_' + currentPipe + '/pipe_' + currentPipe + '.png';
+}
+
+
+function updateNextCell(){
+  switch(direction){
+    // Down
+    case 0:
+      next_cell = [water_cell.x_cell, water_cell.y_cell + 1];
+      break;
+    // Right
+    case 1:
+      next_cell = [water_cell.x_cell + 1, water_cell.y_cell];
+      break;
+    // Up
+    case 2:
+      next_cell = [water_cell.x_cell, water_cell.y_cell - 1];
+      break;
+    // Left
+    case 3:
+      next_cell = [water_cell.x_cell - 1, water_cell.y_cell];
+      break;
+  }
+}
+
+
+function new_level(){
+  startPipe = new StartPipe();
+  endpipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);
+  cells = new Array(10);
+  for (var i = 0; i < 10; i++) {
+    cells[i] = new Array(10);
+  }
+  cells[startPipe.x_cell][startPipe.y_cell] = startPipe;
+  cells[endPipe.x_cell][endPipe.y_cell] = endPipe; 
 }
