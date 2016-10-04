@@ -25,6 +25,7 @@ var cells = new Array(10);
 var pipes_used = 0;
 var count = 300;
 var level = 1;
+var score = 0;
 
 for (var i = 0; i < 10; i++) {
   cells[i] = new Array(10);
@@ -233,12 +234,23 @@ function updateNextCell(){
 
 
 function new_level(){
+  level += 1;
+  score += 10 * pipes_used;
+  pipes_used = 0;
+
   startPipe = new StartPipe();
-  endpipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);
+  endPipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);
   cells = new Array(10);
   for (var i = 0; i < 10; i++) {
     cells[i] = new Array(10);
   }
   cells[startPipe.x_cell][startPipe.y_cell] = startPipe;
   cells[endPipe.x_cell][endPipe.y_cell] = endPipe; 
+
+  currentPipe = Math.floor(Math.random()*6);
+  updatePipeImgSource();
+
+  water_cell = startPipe;
+  direction = startPipe.beginFlow();
+  updateNextCell()
 }
