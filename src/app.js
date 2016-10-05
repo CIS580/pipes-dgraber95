@@ -31,10 +31,12 @@ var next_cell = [-1, -1];
 var cells = new Array(BOARD_HEIGHT);
 var pipes_used = 0;
 var count = 300;
-var oldCount = 0;
+var speedup = false;
 var level = 1;
 var score = 0;
 var state = 'ready';
+var countDown = COUNTDOWN;
+var p_key = false;
 
 for (var i = 0; i < BOARD_HEIGHT; i++) {
   cells[i] = new Array(BOARD_WIDTH);
@@ -110,8 +112,7 @@ window.onkeydown = function(event) {
     // Hold space to speed up
     case 32:
       event.preventDefault();
-      oldCount = count;
-      count = SPEEDUP_COUNT;
+      speedup = true;
       break;
 
     // P to pause
@@ -135,11 +136,13 @@ window.onkeyup = function(event) {
   switch(event.keyCode) {
     // Space
     case 32:
-      count = oldCount;
+      event.preventDefault();
+      speedup = false;
       break;
 
     // P
     case 80:
+      event.preventDefault();
       p_key = false;
       break;      
   }
@@ -150,7 +153,7 @@ window.onkeyup = function(event) {
  * Pause game if window loses focus
  */
 window.onblur = function(){
-  state = 'paused';
+  //state = 'paused';
 }
 
 /**
@@ -174,7 +177,7 @@ function getMousePos(event) {
   var rect = canvas.getBoundingClientRect();
   // x and y of cursor are offset by 8 and 79 respectively for some reason  
   cursor_x = event.clientX - rect.left;
-  cursor_y = event.clientY - rect.y;  
+  cursor_y = event.clientY - rect.top;  
 }
 
 
@@ -187,8 +190,6 @@ function getMousePos(event) {
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
-
-
   switch(state) {
     case 'ready': 
       countDown -= elapsedTime;
@@ -244,12 +245,13 @@ function update(elapsedTime) {
       }
 
       // Update all pipes
-      for(var i = 0; i < 10; i ++)
+      for(var i = 0; i < BOARD_WIDTH; i ++)
       {
-        for(var j = 0; j < 10; j++)
+        for(var j = 0; j < BOARD_HEIGHT; j++)
         {
           if(cells[i][j]){
-            cells[i][j].update(elapsedTime, count);
+            if(speedup) cells[i][j].update(elapsedTime, 0);
+            else cells[i][j].update(elapsedTime, count);
           }
         }
       }
