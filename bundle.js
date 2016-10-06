@@ -39,6 +39,18 @@ var state = 'ready';
 var countDown = COUNTDOWN;
 var p_key = false;
 
+var gameoverSound = new Audio('sounds/gameover.wav');
+gameoverSound.volume = 0.5;
+var backgroundSound = new Audio('sounds/we_can_do_it.mp3');
+backgroundSound.volume = 0.5;
+backgroundSound.addEventListener('ended', function() {
+    this.currentTime = 0;
+    this.play();
+}, false);
+var newgameSound = new Audio('sounds/newgame.wav');
+newgameSound.volume = 0.5;
+
+
 for (var i = 0; i < BOARD_HEIGHT; i++) {
   cells[i] = new Array(BOARD_WIDTH);
 }
@@ -121,8 +133,14 @@ window.onkeydown = function(event) {
       event.preventDefault();
       if(!p_key){
         p_key = true;
-        if(state == 'paused') state = 'running';
-        else if(state == 'running') state = 'paused';
+        if(state == 'paused'){
+          state = 'running';
+          backgroundSound.play();
+        }
+        else if(state == 'running'){
+          state = 'paused';
+          backgroundSound.pause();          
+        }
       }
       break;
   }
@@ -154,8 +172,10 @@ window.onkeyup = function(event) {
  * Pause game if window loses focus
  */
 window.onblur = function(){
-  if(state == 'running' || state == 'ready')
-  state = 'paused';
+  if(state == 'running' || state == 'ready'){
+    state = 'paused';
+    backgroundSound.pause();
+  }
 }
 
 /**
@@ -200,6 +220,7 @@ function update(elapsedTime) {
         direction = startPipe.beginFlow();
         updateNextCell();
         state = 'running';
+        backgroundSound.play();
       }
       break;
 
@@ -228,6 +249,8 @@ function update(elapsedTime) {
         // Game over if there is no pipe, or if the pipe has no entry
         // facing the current direction
         if(!water_cell || !water_cell.entries[oppDirection]){
+          backgroundSound.pause();
+          gameoverSound.play();
           state = 'gameover';
           break exit;
         }
@@ -381,6 +404,7 @@ function updateNextCell(){
 
 
 function new_level(){
+  newgameSound.play();
   state = 'ready';
   level += 1;
   count -= 30;
@@ -535,8 +559,10 @@ function Pipe(x_cell, y_cell, pipenum) {
   this.spritesheet  = new Image();
   this.spritesheet.src = 'assets/pipes/pipe_' + this.pipenum + '/pipe_' + this.pipenum + '.png';
   this.placeSound = new Audio('sounds/place_pipe.wav');
+  this.placeSound.volume = 0.5;
   this.placeSound.play();
   this.rotateSound = new Audio('sounds/rotate_pipe.wav');
+  this.rotateSound.volume = 0.5;
   this.waterImg = new Image();
   this.waterImg.src = '';
   this.x_cell = x_cell;

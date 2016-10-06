@@ -20,8 +20,10 @@ function Pipe(x_cell, y_cell, pipenum) {
   this.spritesheet  = new Image();
   this.spritesheet.src = 'assets/pipes/pipe_' + this.pipenum + '/pipe_' + this.pipenum + '.png';
   this.placeSound = new Audio('sounds/place_pipe.wav');
+  this.placeSound.volume = 0.5;
   this.placeSound.play();
   this.rotateSound = new Audio('sounds/rotate_pipe.wav');
+  this.rotateSound.volume = 0.5;
   this.waterImg = new Image();
   this.waterImg.src = '';
   this.x_cell = x_cell;
