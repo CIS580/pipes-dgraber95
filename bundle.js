@@ -1,7 +1,7 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
-const COUNTDOWN = 1800;
+const COUNTDOWN = 2400;
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 10;
 const CELL_SIZE = 86;
@@ -154,7 +154,8 @@ window.onkeyup = function(event) {
  * Pause game if window loses focus
  */
 window.onblur = function(){
-  //state = 'paused';
+  if(state == 'running' || state == 'ready')
+  state = 'paused';
 }
 
 /**
@@ -220,25 +221,25 @@ function update(elapsedTime) {
       exit: // break out if game over or new level
       if(water_cell.waterlevel == 10)
       {
+
         // Get the next cell water is going in to
         water_cell = cells[next_cell[0]][next_cell[1]];
 
         // Game over if there is no pipe, or if the pipe has no entry
         // facing the current direction
         if(!water_cell || !water_cell.entries[oppDirection]){
-          game.pause(true);
           state = 'gameover';
           break exit;
         }
-
-        // Increment number of pipes used
-        pipes_used += 1;
 
         // New level
         if(water_cell.endpipe){
           new_level();
           break exit;
         }
+
+        // Increment number of pipes used
+        pipes_used += 1;
 
         // Start water flow and get new direction
         direction = water_cell.beginFlow(oppDirection);    
@@ -299,19 +300,26 @@ function render(elapsedTime, ctx) {
       cursor_x - 52, cursor_y - 41, CELL_SIZE, CELL_SIZE
     );
     ctx.globalAlpha = 1.0;
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'black';
+    ctx.font = "40px Lucida Console";
+    ctx.fillText("Score: " + score, canvas.width - 150, canvas.height - 40);      
+    ctx.strokeText("Score: " + score, canvas.width - 150, canvas.height - 40);  
   }
   if(state == 'gameover'){
     ctx.globalAlpha = 0.6;
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.globalAlpha = 1;
-    ctx.font = "50px Lucida Console";
+    ctx.font = "60px Lucida Console";
 		ctx.fillStyle = "red";
+    ctx.strokeStyle = 'black';
 		ctx.textAlign = "center";
 		ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2); 
-		ctx.font = "25px Lucida Console";
+		ctx.strokeText("GAME OVER", canvas.width/2, canvas.height/2); 
+		ctx.font = "35px Lucida Console";
 		ctx.fillStyle = "black";
-		ctx.fillText("Final Score: " + score, canvas.width/2, canvas.height/2 + 30);
+		ctx.fillText("Final Score: " + score, canvas.width/2, canvas.height/2 + 35);
   }
   else if(state == 'paused'){
     ctx.globalAlpha = 0.6;
@@ -331,13 +339,17 @@ function render(elapsedTime, ctx) {
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.globalAlpha = 1;
-    ctx.font = "50px Lucida Console";
-		ctx.fillStyle = "black";
+    ctx.font = "75px Lucida Console";
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'black';
 		ctx.textAlign = "center";
-		ctx.fillText(Math.ceil(countDown/600),  canvas.width/2, canvas.height/2); 
-		ctx.font = "25px Lucida Console";
-		ctx.fillStyle = "black";
-		ctx.fillText("Level: " + level, canvas.width/2, canvas.height/2 + 30);
+		ctx.fillText(Math.ceil(countDown/(COUNTDOWN/3)),  canvas.width/2, canvas.height/2); 
+		ctx.strokeText(Math.ceil(countDown/(COUNTDOWN/3)),  canvas.width/2, canvas.height/2); 
+		ctx.font = "40px Lucida Console";
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'black';
+		ctx.fillText("Level: " + level, canvas.width/2, canvas.height/2 + 60);
+		ctx.strokeText("Level: " + level, canvas.width/2, canvas.height/2 + 60);
   }  
 }
 
@@ -377,9 +389,9 @@ function new_level(){
 
   startPipe = new StartPipe();
   endPipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);
-  cells = new Array(10);
-  for (var i = 0; i < 10; i++) {
-    cells[i] = new Array(10);
+  cells = new Array(BOARD_WIDTH);
+  for (var i = 0; i < BOARD_WIDTH; i++) {
+    cells[i] = new Array(BOARD_HEIGHT);
   }
   cells[startPipe.x_cell][startPipe.y_cell] = startPipe;
   cells[endPipe.x_cell][endPipe.y_cell] = endPipe; 
@@ -522,13 +534,16 @@ function Pipe(x_cell, y_cell, pipenum) {
   this.pipenum = pipenum;
   this.spritesheet  = new Image();
   this.spritesheet.src = 'assets/pipes/pipe_' + this.pipenum + '/pipe_' + this.pipenum + '.png';
+  this.placeSound = new Audio('sounds/place_pipe.wav');
+  this.placeSound.play();
+  this.rotateSound = new Audio('sounds/rotate_pipe.wav');
   this.waterImg = new Image();
   this.waterImg.src = '';
   this.x_cell = x_cell;
   this.y_cell = y_cell;
   this.width  = 86;
   this.height = 86;
-  this.waterlevel = -1;
+  this.waterlevel = -3;
   this.count = 0;
   this.rotatable = true;
 
@@ -541,7 +556,7 @@ function Pipe(x_cell, y_cell, pipenum) {
  * @function updates the pipe object
  */
 Pipe.prototype.update = function(elapsedTime, count) {
-  if(this.waterlevel >= 0 && this.waterlevel < 10){
+  if(this.waterlevel >= -2 && this.waterlevel < 10){
     this.count += elapsedTime;
     if(this.count > count){
         this.waterlevel += 1;
@@ -555,7 +570,7 @@ Pipe.prototype.update = function(elapsedTime, count) {
  * {CanvasRenderingContext2D} ctx - the context to render into
  */
 Pipe.prototype.render = function(ctx) {
-  if(this.waterlevel > 0){
+  if(this.waterlevel >= 0){
     ctx.drawImage(
       //image
       this.waterImg,
@@ -584,7 +599,7 @@ Pipe.prototype.render = function(ctx) {
  * return: direction water will flow out
  */
 Pipe.prototype.beginFlow = function(waterDirection) {
-    this.waterlevel = 0;
+    this.waterlevel = -2;
     this.rotatable = false;
     switch(this.pipenum){
       case 0:
@@ -671,7 +686,10 @@ Pipe.prototype.rotate = function() {
     }
     this.spritesheet.src = 'assets/pipes/pipe_' + this.pipenum + '/pipe_' + this.pipenum + '.png';
     this.updateEntries();
+    this.rotateSound.play();
 }
+
+
 
 /**
  * @function updates the pipe entry ways
@@ -729,7 +747,7 @@ function StartPipe() {
 StartPipe.prototype.update = function(elapsedTime) {
   if(this.waterlevel >= 0 && this.waterlevel < 10){
     this.count += elapsedTime;
-    if(this.count > 1000){
+    if(this.count > 500){
         this.waterlevel += 1;
         this.count = 0;
     }

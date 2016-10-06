@@ -1,6 +1,6 @@
 "use strict";
 
-const COUNTDOWN = 1800;
+const COUNTDOWN = 2400;
 const BOARD_WIDTH = 10;
 const BOARD_HEIGHT = 10;
 const CELL_SIZE = 86;
@@ -153,7 +153,8 @@ window.onkeyup = function(event) {
  * Pause game if window loses focus
  */
 window.onblur = function(){
-  //state = 'paused';
+  if(state == 'running' || state == 'ready')
+  state = 'paused';
 }
 
 /**
@@ -219,25 +220,25 @@ function update(elapsedTime) {
       exit: // break out if game over or new level
       if(water_cell.waterlevel == 10)
       {
+
         // Get the next cell water is going in to
         water_cell = cells[next_cell[0]][next_cell[1]];
 
         // Game over if there is no pipe, or if the pipe has no entry
         // facing the current direction
         if(!water_cell || !water_cell.entries[oppDirection]){
-          game.pause(true);
           state = 'gameover';
           break exit;
         }
-
-        // Increment number of pipes used
-        pipes_used += 1;
 
         // New level
         if(water_cell.endpipe){
           new_level();
           break exit;
         }
+
+        // Increment number of pipes used
+        pipes_used += 1;
 
         // Start water flow and get new direction
         direction = water_cell.beginFlow(oppDirection);    
@@ -298,19 +299,26 @@ function render(elapsedTime, ctx) {
       cursor_x - 52, cursor_y - 41, CELL_SIZE, CELL_SIZE
     );
     ctx.globalAlpha = 1.0;
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'black';
+    ctx.font = "40px Lucida Console";
+    ctx.fillText("Score: " + score, canvas.width - 150, canvas.height - 40);      
+    ctx.strokeText("Score: " + score, canvas.width - 150, canvas.height - 40);  
   }
   if(state == 'gameover'){
     ctx.globalAlpha = 0.6;
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.globalAlpha = 1;
-    ctx.font = "50px Lucida Console";
+    ctx.font = "60px Lucida Console";
 		ctx.fillStyle = "red";
+    ctx.strokeStyle = 'black';
 		ctx.textAlign = "center";
 		ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2); 
-		ctx.font = "25px Lucida Console";
+		ctx.strokeText("GAME OVER", canvas.width/2, canvas.height/2); 
+		ctx.font = "35px Lucida Console";
 		ctx.fillStyle = "black";
-		ctx.fillText("Final Score: " + score, canvas.width/2, canvas.height/2 + 30);
+		ctx.fillText("Final Score: " + score, canvas.width/2, canvas.height/2 + 35);
   }
   else if(state == 'paused'){
     ctx.globalAlpha = 0.6;
@@ -330,13 +338,17 @@ function render(elapsedTime, ctx) {
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.globalAlpha = 1;
-    ctx.font = "50px Lucida Console";
-		ctx.fillStyle = "black";
+    ctx.font = "75px Lucida Console";
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'black';
 		ctx.textAlign = "center";
-		ctx.fillText(Math.ceil(countDown/600),  canvas.width/2, canvas.height/2); 
-		ctx.font = "25px Lucida Console";
-		ctx.fillStyle = "black";
-		ctx.fillText("Level: " + level, canvas.width/2, canvas.height/2 + 30);
+		ctx.fillText(Math.ceil(countDown/(COUNTDOWN/3)),  canvas.width/2, canvas.height/2); 
+		ctx.strokeText(Math.ceil(countDown/(COUNTDOWN/3)),  canvas.width/2, canvas.height/2); 
+		ctx.font = "40px Lucida Console";
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'black';
+		ctx.fillText("Level: " + level, canvas.width/2, canvas.height/2 + 60);
+		ctx.strokeText("Level: " + level, canvas.width/2, canvas.height/2 + 60);
   }  
 }
 
@@ -376,9 +388,9 @@ function new_level(){
 
   startPipe = new StartPipe();
   endPipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);
-  cells = new Array(10);
-  for (var i = 0; i < 10; i++) {
-    cells[i] = new Array(10);
+  cells = new Array(BOARD_WIDTH);
+  for (var i = 0; i < BOARD_WIDTH; i++) {
+    cells[i] = new Array(BOARD_HEIGHT);
   }
   cells[startPipe.x_cell][startPipe.y_cell] = startPipe;
   cells[endPipe.x_cell][endPipe.y_cell] = endPipe; 

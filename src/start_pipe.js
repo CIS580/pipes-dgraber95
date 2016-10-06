@@ -28,7 +28,7 @@ function StartPipe() {
 StartPipe.prototype.update = function(elapsedTime) {
   if(this.waterlevel >= 0 && this.waterlevel < 10){
     this.count += elapsedTime;
-    if(this.count > 1000){
+    if(this.count > 500){
         this.waterlevel += 1;
         this.count = 0;
     }
