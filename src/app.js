@@ -16,28 +16,28 @@ const EndPipe = require('./end_pipe.js');
 /* Global variables */
 var canvas = document.getElementById('screen');
 var game = new Game(canvas, update, render);
-var startPipe = new StartPipe();
-var endPipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);
-var cur_pipe_image = new Image();
-var background = new Image();
-background.src = 'assets/pipes_background.jpg';
-var currentPipe = Math.floor(Math.random()*6);
-updatePipeImgSource();
-var cursor_x = -80;
-var cursor_y = -80;
-var water_cell = startPipe;
-var direction = -1;
-var next_cell = [-1, -1];
-var cells = new Array(BOARD_HEIGHT);
-var pipes_used = 0;
-var count = 300;
-var speedup = false;
-var level = 1;
-var score = 0;
-var state = 'ready';
-var countDown = COUNTDOWN;
-var p_key = false;
+var startPipe = new StartPipe();  // Pipe where water starts
+var endPipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);  // Destination pipe
+var cur_pipe_image = new Image(); // Image of next pipe to be placed
+var background = new Image();     // Background image
+background.src = 'assets/pipes_background.jpg'; // Background image source
+var currentPipe = Math.floor(Math.random()*6);  // Next pipe to be placed
+updatePipeImgSource();      // Update the image source of the next pipe to be placed
+var cursor_x = -80;         // Mouse x location in canvas
+var cursor_y = -80;         // Mouse x location in canvas
+var water_cell = startPipe; // Set reference of cell with water flow to the starting pipe
+var direction = -1;         // Direction water is flowing (0, 1, 2, 3 = down, right, up, left)
+var next_cell = [-1, -1];   // Cell the water is flowing towards
+var pipes_used = 0;         // Pipes used in the path of the water (used to find score)
+var count = 300;            // Milliseconds between water flow increments
+var speedup = false;        // Set to true when spacebar is held down, speeds up water flow drastically
+var level = 1;              // Level counter
+var score = 0;              // Score counter
+var state = 'ready';        // State of the game (initally ready)
+var countDown = COUNTDOWN;  // Countdown for ready screen
+var p_key = false;          // Used for pausing/unpausing
 
+/*  Sounds  */
 var gameoverSound = new Audio('sounds/gameover.wav');
 gameoverSound.volume = 0.5;
 var backgroundSound = new Audio('sounds/we_can_do_it.mp3');
@@ -49,7 +49,8 @@ backgroundSound.addEventListener('ended', function() {
 var newgameSound = new Audio('sounds/newgame.wav');
 newgameSound.volume = 0.5;
 
-
+/* Create board and add stationary pipes */
+var cells = new Array(BOARD_HEIGHT);
 for (var i = 0; i < BOARD_HEIGHT; i++) {
   cells[i] = new Array(BOARD_WIDTH);
 }
@@ -84,9 +85,11 @@ window.onmousedown = function(event) {
       // Right click
       case 2:
         if(state == 'running' || state == 'ready'){
+          // Rotate already placed pipe
           if(thisPipe && thisPipe.rotatable){
             thisPipe.rotate();
           }
+          // Rotate next pipe to be placed
           else{
             if(currentPipe == 3){
               currentPipe = 0;
@@ -117,7 +120,7 @@ window.onmousemove = function(event) {
 /**
  * Handles key press down events 
  * p = pause/unpause
- * space = speed up liquid
+ * space = speed up water
  */
 window.onkeydown = function(event) {
   switch(event.keyCode) {
@@ -190,9 +193,8 @@ masterLoop(performance.now());
 
 
 /**
- * @function masterLoop
- * Advances the game in sync with the refresh rate of the screen
- * @param {DOMHighResTimeStamp} timestamp the current time
+ * @function getMousePos
+ * Gets mouse position relative to the top left corner of the canvas
  */
 function getMousePos(event) {
   var rect = canvas.getBoundingClientRect();
@@ -238,10 +240,8 @@ function update(elapsedTime) {
           break;
       }
 
-      exit: // break out if game over or new level
       if(water_cell.waterlevel == 10)
       {
-
         // Get the next cell water is going in to
         water_cell = cells[next_cell[0]][next_cell[1]];
 
@@ -251,13 +251,13 @@ function update(elapsedTime) {
           backgroundSound.pause();
           gameoverSound.play();
           state = 'gameover';
-          break exit;
+          return;
         }
 
         // New level
         if(water_cell.endpipe){
           new_level();
-          break exit;
+          return;
         }
 
         // Increment number of pipes used
@@ -310,7 +310,7 @@ function render(elapsedTime, ctx) {
     }
   }
 
-  if(state == 'running' || state == 'ready'){
+  if(state != 'gameover'){
     // Render transparent pipe that follows the cursor
     ctx.globalAlpha = 0.4;
     ctx.drawImage(
@@ -321,6 +321,8 @@ function render(elapsedTime, ctx) {
       //destination rectangle
       cursor_x - 52, cursor_y - 41, CELL_SIZE, CELL_SIZE
     );
+
+    // Render score
     ctx.globalAlpha = 1.0;
     ctx.fillStyle = 'white';
     ctx.strokeStyle = 'black';
@@ -328,6 +330,8 @@ function render(elapsedTime, ctx) {
     ctx.fillText("Score: " + score, canvas.width - 150, canvas.height - 40);      
     ctx.strokeText("Score: " + score, canvas.width - 150, canvas.height - 40);  
   }
+
+  // Game over screen
   if(state == 'gameover'){
     ctx.globalAlpha = 0.6;
     ctx.fillStyle = 'white';
@@ -343,6 +347,8 @@ function render(elapsedTime, ctx) {
 		ctx.fillStyle = "black";
 		ctx.fillText("Final Score: " + score, canvas.width/2, canvas.height/2 + 35);
   }
+
+  // Pause screen
   else if(state == 'paused'){
     ctx.globalAlpha = 0.6;
     ctx.fillStyle = 'white';
@@ -352,10 +358,9 @@ function render(elapsedTime, ctx) {
 		ctx.fillStyle = "black";
 		ctx.textAlign = "center";
 		ctx.fillText("PAUSED", canvas.width/2, canvas.height/2); 
-		ctx.font = "25px Lucida Console";
-		ctx.fillStyle = "black";
-		ctx.fillText("Score: " + score, canvas.width/2, canvas.height/2 + 30);
   }
+
+  // Ready screen (level + countdown)
   else if(state == 'ready'){
     ctx.globalAlpha = 0.3;
     ctx.fillStyle = 'white';
@@ -375,11 +380,20 @@ function render(elapsedTime, ctx) {
   }  
 }
 
+/**
+ * @function updatePipeImgSource
+ * Updates the image source of the current (unplaced) pipe
+ */
 function updatePipeImgSource(){
   cur_pipe_image.src = 'assets/pipes/pipe_' + currentPipe + '/pipe_' + currentPipe + '.png';
 }
 
 
+/**
+ * @function updateNextCell
+ * Determines the next cell for water to flow into, depending on the current
+ * water flow direction
+ */
 function updateNextCell(){
   switch(direction){
     // Down
@@ -402,7 +416,12 @@ function updateNextCell(){
 }
 
 
+/**
+ * @function new_level
+ * Resets board with new start and end pipe and adds to score
+ */
 function new_level(){
+  // Play sound, set state, increment level, speed up flow, and update score
   newgameSound.play();
   state = 'ready';
   level += 1;
@@ -410,6 +429,7 @@ function new_level(){
   score += 10 * pipes_used;
   pipes_used = 0;
 
+  // Reset board
   startPipe = new StartPipe();
   endPipe = new EndPipe(startPipe.x_cell, startPipe.y_cell);
   cells = new Array(BOARD_WIDTH);
@@ -419,9 +439,11 @@ function new_level(){
   cells[startPipe.x_cell][startPipe.y_cell] = startPipe;
   cells[endPipe.x_cell][endPipe.y_cell] = endPipe; 
 
+  // Get new current pipe
   currentPipe = Math.floor(Math.random()*6);
   updatePipeImgSource();
 
+  // Start water flow
   water_cell = startPipe;
   direction = startPipe.beginFlow();
   updateNextCell()

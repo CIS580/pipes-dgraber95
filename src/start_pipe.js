@@ -19,7 +19,6 @@ function StartPipe() {
   this.count = 0;
   this.entries = [false, false, false, false];
   this.rotatable = false;
-
 }
 
 /**
